@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Registration</title>
+    <script>
+        let videoStream;
+
+        function startCamera() {
+            const video = document.getElementById('video');
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    videoStream = stream;
+                })
+                .catch(err => {
+                    alert("Camera access denied or unavailable.");
+                });
+        }
+
+        function captureImage() {
+            const canvas = document.getElementById('canvas');
+            const video = document.getElementById('video');
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = canvas.toDataURL('image/png');
+            document.getElementById('img_data').value = imageData;
+            document.getElementById('faceForm').submit();
+        }
+
+        window.onload = startCamera;
+    </script>
+</head>
+<body>
+    <h2>Register Student Face</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+        {% for category, message in messages %}
+          <li style="color: {{ 'red' if category == 'danger' else 'green' }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form id="faceForm" method="POST" action="/register_face">
+        <label for="roll_no">Roll Number:</label>
+        <input type="text" id="roll_no" name="roll_no" required><br><br>
+
+        <video id="video" width="320" height="240" autoplay></video><br>
+        <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+        <input type="hidden" name="img" id="img_data">
+        <button type="button" onclick="captureImage()">Capture & Submit</button>
+    </form>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discipline In-Charge Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        @media (max-width: 768px) {
+            .main-table { display: none; }
+            .mobile-summary { display: block; }
+        }
+        @media (min-width: 769px) {
+            .main-table { display: block; }
+            .mobile-summary { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Discipline In-Charge Dashboard</h2>
+
+    <div class="d-flex flex-column flex-md-row gap-2 mb-3 justify-content-center">
+        <button class="btn btn-outline-primary w-100" onclick="toggleSection('scannerSection')">Use QR Scanner</button>
+        <button class="btn btn-outline-success w-100" onclick="toggleSection('faceSection')">Mark by Face</button>
+        <button class="btn btn-outline-warning w-100" onclick="toggleSection('registerSection')">Register Face</button>
+    </div>
+
+    <!-- QR Scanner Section -->
+    <div id="scannerSection">
+        <form method="POST" class="mb-3" id="rollForm">
+            <div class="form-group">
+                <label for="roll_no">Roll Number:</label>
+                <input type="text" id="roll_no" name="roll_no" class="form-control" placeholder="Scan or enter roll number" required>
+            </div>
+            <button type="submit" class="btn btn-primary mt-2 w-100">Mark Late</button>
+        </form>
+        <div id="scanner" style="width: 100%; max-width: 400px; margin: auto;"></div>
+    </div>
+
+    <!-- Face Recognition Section -->
+    <div id="faceSection" style="display: none;" class="mt-5">
+        <h4>Mark Attendance via Live Face</h4>
+        <video id="faceVideo" autoplay playsinline width="100%" style="max-width: 400px;"></video>
+        <button class="btn btn-success mt-2 w-100" onclick="markFaceAttendance()">Mark by Face</button>
+    </div>
+
+    <!-- Face Registration Section -->
+    <div id="registerSection" style="display: none;" class="mt-5">
+        <h4>Register Student Face via Live Camera</h4>
+        <input type="text" id="roll_no_register" class="form-control" placeholder="Enter Roll No" required>
+        <video id="registerVideo" autoplay playsinline width="100%" style="max-width: 400px;"></video>
+        <button class="btn btn-warning mt-2 w-100" onclick="registerStudentFace()">Register Face</button>
+    </div>
+
+    <h4 class="mt-5">Today's Late Attendance</h4>
+
+    <div class="mt-4">
+        <input type="text" class="form-control" id="searchInput" placeholder="Search by name, roll number, year, or department">
+    </div>
+
+    <div class="table-responsive main-table mt-3">
+        <table class="table table-striped" id="attendanceTable">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Name</th>
+                    <th>Roll No</th>
+                    <th>Year</th>
+                    <th>Department</th>
+                    <th>Total Late</th>
+                    <th>Late This Week</th>
+                    <th>Late This Month</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td>{{ student.name }}</td>
+                    <td>{{ student.roll_no }}</td>
+                    <td>{{ student.year }}</td>
+                    <td>{{ student.department }}</td>
+                    <td>{{ student.total_late }}</td>
+                    <td>{{ student.late_this_week }}</td>
+                    <td>{{ student.late_this_month }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_late_record', record_id=student.record_id) }}" method="POST">
+                            <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this record?');">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mobile-summary mt-3">
+        <table class="table table-sm table-bordered text-center">
+            <thead class="table-light">
+                <tr>
+                    <th>Name</th>
+                    <th>Roll No</th>
+                    <th>This Week</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td>{{ student.name }}</td>
+                    <td>{{ student.roll_no }}</td>
+                    <td>{{ student.late_this_week }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-3 d-flex justify-content-between">
+        <a href="{{ url_for('view_previous_attendance') }}" class="btn btn-secondary">View Previous Attendance</a>
+        <a href="{{ url_for('login') }}" class="btn btn-danger">Logout</a>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    const rollInput = document.getElementById('roll_no');
+    const form = document.getElementById('rollForm');
+    let html5QrcodeScanner;
+
+    function stopCamera(videoElementId) {
+        const video = document.getElementById(videoElementId);
+        const stream = video.srcObject;
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+        }
+    }
+
+    function startCamera(videoElementId) {
+        stopCamera(videoElementId);
+        const video = document.getElementById(videoElementId);
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                alert("Camera access denied: " + err.message);
+            });
+    }
+
+    function toggleSection(sectionId) {
+        const sections = ['scannerSection', 'faceSection', 'registerSection'];
+        sections.forEach(id => {
+            document.getElementById(id).style.display = (id === sectionId) ? 'block' : 'none';
+        });
+
+        if (sectionId === 'faceSection') startCamera('faceVideo');
+        else stopCamera('faceVideo');
+
+        if (sectionId === 'registerSection') startCamera('registerVideo');
+        else stopCamera('registerVideo');
+
+        localStorage.setItem('activeSection', sectionId);
+    }
+
+    window.addEventListener('load', () => {
+        toggleSection('scannerSection');
+        html5QrcodeScanner = new Html5QrcodeScanner("scanner", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess);
+    });
+
+    function onScanSuccess(decodedText) {
+        if (rollInput.value !== decodedText.trim()) {
+            rollInput.value = decodedText.trim();
+            form.requestSubmit();
+        }
+    }
+
+    form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const formData = new FormData(form);
+        fetch("/discipline_incharge_dashboard", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            alert(result.message);
+            if (result.success && result.student) addStudentToTable(result.student);
+            rollInput.value = '';
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("An error occurred.");
+        });
+    });
+
+    function captureImage(videoId) {
+        const video = document.getElementById(videoId);
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        return canvas.toDataURL('image/jpeg');
+    }
+
+    function markFaceAttendance() {
+        const img = captureImage('faceVideo');
+        fetch('/face_attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ img: img })
+        })
+        .then(res => res.json())
+        .then(res => {
+            alert(res.message);
+            if (res.success && res.student) addStudentToTable(res.student);
+        })
+        .catch(() => alert("An error occurred while marking face attendance."));
+    }
+
+    function registerStudentFace() {
+        const rollNo = document.getElementById('roll_no_register').value.trim();
+        if (!rollNo) return alert("Enter roll number first.");
+        const img = captureImage('registerVideo');
+        alert("Registering face...");
+        fetch('/register_face', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roll_no: rollNo, img: img })
+        })
+        .then(res => res.json())
+        .then(res => alert(res.message))
+        .catch(() => alert("Face registration failed."));
+    }
+
+    function addStudentToTable(data) {
+        const tableBody = document.querySelector("#attendanceTable tbody");
+        const existingRow = [...tableBody.rows].find(row =>
+            row.querySelector("td:nth-child(2)")?.innerText.trim() === data.roll_no
+        );
+
+        const newRow = document.createElement("tr");
+        newRow.innerHTML = `
+            <td>${data.name}</td>
+            <td>${data.roll_no}</td>
+            <td>${data.year}</td>
+            <td>${data.department}</td>
+            <td>${data.total_late}</td>
+            <td>${data.late_this_week}</td>
+            <td>${data.late_this_month}</td>
+            <td>
+                <form action="/delete_late_record/${data.record_id}" method="POST">
+                    <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this record?');">Delete</button>
+                </form>
+            </td>
+        `;
+
+        if (existingRow) tableBody.replaceChild(newRow, existingRow);
+        else tableBody.prepend(newRow);
+
+        newRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('searchInput').addEventListener('input', function () {
+        const value = this.value.toLowerCase();
+        document.querySelectorAll('#attendanceTable tbody tr').forEach(row => {
+            const match = [...row.cells].some(td => td.textContent.toLowerCase().includes(value));
+            row.style.display = match ? '' : 'none';
+        });
+    });
+</script>
+</body>
+</html>

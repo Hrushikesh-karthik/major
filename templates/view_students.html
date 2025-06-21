@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Filter Sidebar -->
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    🔍 Filter by Total Late
+                </div>
+                <div class="card-body">
+                    <label for="lateFilterInput" class="form-label">Total Late &gt; </label>
+                    <input type="number" id="lateFilterInput" class="form-control" placeholder="e.g. 3">
+                    <button class="btn btn-secondary w-100 mt-3" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+
+            <!-- Department Stats -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    📊 Department Stats
+                </div>
+                <div class="card-body">
+                    {% if department_stats %}
+                        <p><strong>Most Late Dept:</strong><br>
+                        {{ department_stats.department }} ({{ department_stats.total_late }} lates)</p>
+                    {% else %}
+                        <p>No data available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <!-- Dynamic Search Bar -->
+            <div class="row mb-4">
+                <div class="col-md-10 offset-md-1">
+                    <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Search by any field..." autofocus>
+                </div>
+            </div>
+
+            <!-- Students Table -->
+            <div class="card">
+                <div class="card-header bg-dark text-white text-center">
+                    <h4>{{ title }}</h4>
+                </div>
+                <div class="card-body table-responsive">
+                    <table class="table table-bordered table-hover" id="studentsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Roll No</th>
+                                <th>Name</th>
+                                <th>Year</th>
+                                <th>Section</th>
+                                <th>Department</th>
+                                <th>Month Late</th>
+                                <th>Total Late</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>{{ student.roll_no }}</td>
+                                <td>{{ student.name }}</td>
+                                <td>{{ student.year }}</td>
+                                <td>{{ student.section }}</td>
+                                <td>{{ student.department }}</td>
+                                <td>{{ student.month_late_count }}</td>
+                                <td>{{ student.late_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <p id="noResults" class="text-center text-muted mt-3" style="display: none;">No matching records found.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const searchInput = document.getElementById('searchInput');
+const lateFilterInput = document.getElementById('lateFilterInput');
+const table = document.getElementById('studentsTable');
+const rows = table.getElementsByTagName('tr');
+const noResultsMsg = document.getElementById('noResults');
+
+function filterTable() {
+    const searchValue = searchInput.value.toLowerCase();
+    const lateValue = parseInt(lateFilterInput.value) || 0;
+    let anyVisible = false;
+
+    for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        let matchesSearch = false;
+        let lateCountValid = true;
+
+        // Check search text in any column
+        for (let j = 0; j < cells.length; j++) {
+            if (cells[j].textContent.toLowerCase().includes(searchValue)) {
+                matchesSearch = true;
+                break;
+            }
+        }
+
+        // Late count filter
+        const lateCount = parseInt(cells[6]?.textContent) || 0;
+        lateCountValid = lateCount > lateValue;
+
+        const shouldDisplay = matchesSearch && lateCountValid;
+        rows[i].style.display = shouldDisplay ? '' : 'none';
+        if (shouldDisplay) anyVisible = true;
+    }
+
+    noResultsMsg.style.display = anyVisible ? 'none' : 'block';
+}
+
+// Attach listeners
+searchInput.addEventListener('input', filterTable);
+lateFilterInput.addEventListener('input', filterTable);
+
+// Clear and reset table
+function clearFilters() {
+    searchInput.value = '';
+    lateFilterInput.value = '';
+    for (let i = 1; i < rows.length; i++) {
+        rows[i].style.display = '';
+    }
+    noResultsMsg.style.display = 'none';
+}
+</script>
+
+<style>
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background-color: #f1f3f5;
+    }
+
+    .form-control-lg {
+        font-size: 1.25rem;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border: 2px solid #ced4da;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease-in-out;
+    }
+
+    .form-control-lg:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 8px rgba(0, 123, 255, 0.4);
+    }
+
+    .table th, .table td {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    #noResults {
+        font-style: italic;
+        color: #888;
+    }
+
+    .card-header h4 {
+        margin: 0;
+    }
+</style>
+{% endblock %}
