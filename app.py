@@ -843,7 +843,7 @@ def hod_dashboard():
                     })
     else:
         # Regular HOD logic for other departments (Years 2, 3, 4)
-        all_years = [2, 3, 4]
+        all_years = ['2', '3', '4']
         all_sections = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
         attendance_summary = {year: {section: 0 for section in all_sections} for year in all_years}
         late_students_detail = {year: {section: [] for section in all_sections} for year in all_years}
@@ -914,7 +914,7 @@ def calendar_view():
                 })
     else:
         # Regular HOD: year and section-wise summary
-        all_years = [2, 3, 4]  # Exclude 1st year for non-H&S departments
+        all_years = ['2', '3', '4']  # Exclude 1st year for non-H&S departments
         attendance_summary = {year: {section: 0 for section in all_sections} for year in all_years}
         present_students_detail = {year: {section: [] for section in all_sections} for year in all_years}
 
